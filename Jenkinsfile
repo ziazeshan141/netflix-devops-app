@@ -67,7 +67,7 @@ pipeline {
 
         stage('Trivy Filesystem Scan') {
             steps {
-                sh 'trivy fs .'
+                sh 'trivy fs --severity HIGH,CRITICAL .'
             }
         }
 
@@ -87,6 +87,43 @@ pipeline {
                 docker build \
                 -t ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG} \
                 ./frontend
+                """
+            }
+        }
+
+        stage('Trivy Backend Image Scan') {
+            steps {
+                sh """
+                trivy image \
+                --severity HIGH,CRITICAL \
+                ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+                """                                                    
+            }
+
+        }
+
+        stage('Trivy Frontend Image Scan') {
+            steps {
+                sh """
+                trivy image \
+                --severity HIGH,CRITICAL \
+                ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Generate trivy report') {
+            steps {
+                sh """
+                trivy image \
+                --format template \
+                -o reports/backend-report.txt \
+                ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+
+                trivy image \
+                --format template \
+                -o reports/frontend-report.txt \
+                ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
                 """
             }
         }
@@ -151,6 +188,10 @@ pipeline {
     }
 
     post {
+        always {
+            archiveArtifacts artifacts: 'reports/*', fingerprint: true
+            cleanWs()
+        }
 
         success {
             echo 'Pipeline completed successfully.'
@@ -159,9 +200,5 @@ pipeline {
         failure {
             echo 'Pipeline failed.'
         }
-
-        always {
-            cleanWs()
-        }
     }
-}
+}   
