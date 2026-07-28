@@ -170,6 +170,8 @@ pipeline {
                 )]) {
 
                     sh '''
+                    set -e
+                    
                     rm -rf gitops
 
                     git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
@@ -183,9 +185,12 @@ pipeline {
 
                     git add .
 
-                    git commit -m "Update image tag ${IMAGE_TAG}" || true
-
-                    git push
+                    if git diff --cached --quiet; then
+                       echo "No changes to commit."
+                    else
+                       git commit -m "Update image tag ${IMAGE_TAG}"
+                       git push origin main
+                    fi
                     '''
                 }
             }
