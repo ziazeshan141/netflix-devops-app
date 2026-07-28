@@ -169,30 +169,40 @@ pipeline {
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
 
-                    sh '''
-                    set -ex
+                sh '''
+                set -ex
 
                 rm -rf gitops
 
-                echo "Cloning repository..."
+                echo "===== Cloning ====="
                 git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
 
-                cd gitops 
+                echo "===== Enter Repository ====="
+                cd gitops
 
+                echo "===== Branch ====="
+                git branch
+
+                echo "===== Checkout ====="
                 git checkout main
+
+                echo "===== Pull ====="
                 git pull origin main
              
+                echo "===== Update values.yaml ====="             
                 sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
+
+                echo "===== Git status ====="
+                git status
 
                 git config user.email "jenkins@example.com"
                 git config user.name "Jenkins CI"
 
                 git add .
 
-                git status
-
                 git diff --cached --quiet || git commit -m "Update image tag ${IMAGE_TAG}"
-                    
+
+                echo "===== Push to GitOps Repository ====="    
                 git push origin main
                 '''
                 }
