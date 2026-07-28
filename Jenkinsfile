@@ -179,24 +179,10 @@ pipeline {
 
                 cd gitops 
 
-                echo "Current directory:"
-                pwd
-
-                echo "Current branch:"
-                git branch
-
-                echo "Remote:"
-                git remote -v
-
-                echo "Checking values.yaml..."
-                ls -l helm/netflix/
-                cat helm/netflix/values.yaml
-
-                echo "Updating image tag..."
+                git checkout main
+                git pull origin main
+             
                 sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
-
-                echo "Git diff:"
-                git diff
 
                 git config user.email "jenkins@example.com"
                 git config user.name "Jenkins CI"
@@ -205,13 +191,10 @@ pipeline {
 
                 git status
 
-                if git diff --cached --quiet; then
-                    echo "No changes to commit."
-                else
-                    git commit -m "Update image tag ${IMAGE_TAG}"
-                    git push origin HEAD
-                fi
-                    '''
+                git diff --cached --quiet || git commit -m "Update image tag ${IMAGE_TAG}"
+                    
+                git push origin main
+                '''
                 }
             }
         }
