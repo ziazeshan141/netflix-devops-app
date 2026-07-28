@@ -119,15 +119,17 @@ pipeline {
         stage('Generate trivy report') {
             steps {
                 sh """
-                trivy image \
-                --format template \
-                -o reports/backend-report.txt \
-                ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+                   # Ensure output folder exists before Trivy writes to it
+                   mkdir -p reports
+                   trivy image \
+                   --format template \
+                   -o reports/backend-report.txt \
+                   ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
 
-                trivy image \
-                --format template \
-                -o reports/frontend-report.txt \
-                ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
+                   trivy image \
+                   --format template \
+                   -o reports/frontend-report.txt \
+                   ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
                 """
             }
         }
