@@ -178,8 +178,8 @@ pipeline {
 
                     sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
 
-                    git config user.email "ziazeshan141@outlook.com"
-                    git config user.name "ziazeshan141"
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins CI"
 
                     git add .
 
