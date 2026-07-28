@@ -12,8 +12,8 @@ pipeline {
 
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-        BACKEND_IMAGE  = 'netflix-backend'
-        FRONTEND_IMAGE = 'netflix-frontend'
+        BACKEND_IMAGE  = 'netflix-devops-backend'
+        FRONTEND_IMAGE = 'netflix-devops-frontend'
 
         IMAGE_TAG = "${BUILD_NUMBER}"
 
