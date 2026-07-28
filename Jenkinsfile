@@ -169,49 +169,42 @@ pipeline {
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
 
-                    sh '''
-                    set -ex
+                sh '''
+                set -ex
 
                 rm -rf gitops
 
-                echo "Cloning repository..."
+                echo "===== Cloning ====="
                 git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
 
-                cd gitops 
+                echo "===== Enter Repository ====="
+                cd gitops
 
-                echo "Current directory:"
-                pwd
-
-                echo "Current branch:"
+                echo "===== Branch ====="
                 git branch
 
-                echo "Remote:"
-                git remote -v
+                echo "===== Checkout ====="
+                git checkout main
 
-                echo "Checking values.yaml..."
-                ls -l helm/netflix/
-                cat helm/netflix/values.yaml
-
-                echo "Updating image tag..."
+                echo "===== Pull ====="
+                git pull origin main
+             
+                echo "===== Update values.yaml ====="             
                 sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
 
-                echo "Git diff:"
-                git diff
+                echo "===== Git status ====="
+                git status
 
                 git config user.email "jenkins@example.com"
                 git config user.name "Jenkins CI"
 
                 git add .
 
-                git status
+                git diff --cached --quiet || git commit -m "Update image tag ${IMAGE_TAG}"
 
-                if git diff --cached --quiet; then
-                    echo "No changes to commit."
-                else
-                    git commit -m "Update image tag ${IMAGE_TAG}"
-                    git push origin HEAD
-                fi
-                    '''
+                echo "===== Push to GitOps Repository ====="    
+                git push origin main
+                '''
                 }
             }
         }
