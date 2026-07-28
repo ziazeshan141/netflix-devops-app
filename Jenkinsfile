@@ -170,27 +170,47 @@ pipeline {
                 )]) {
 
                     sh '''
-                    set -e
-                    
-                    rm -rf gitops
+                    set -ex
 
-                    git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
+                rm -rf gitops
 
-                    cd gitops
+                echo "Cloning repository..."
+                git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
 
-                    sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
+                cd gitops 
 
-                    git config user.email "jenkins@example.com"
-                    git config user.name "Jenkins CI"
+                echo "Current directory:"
+                pwd
 
-                    git add .
+                echo "Current branch:"
+                git branch
 
-                    if git diff --cached --quiet; then
-                       echo "No changes to commit."
-                    else
-                       git commit -m "Update image tag ${IMAGE_TAG}"
-                       git push origin main
-                    fi
+                echo "Remote:"
+                git remote -v
+
+                echo "Checking values.yaml..."
+                ls -l helm/netflix/
+                cat helm/netflix/values.yaml
+
+                echo "Updating image tag..."
+                sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
+
+                echo "Git diff:"
+                git diff
+
+                git config user.email "jenkins@example.com"
+                git config user.name "Jenkins CI"
+
+                git add .
+
+                git status
+
+                if git diff --cached --quiet; then
+                    echo "No changes to commit."
+                else
+                    git commit -m "Update image tag ${IMAGE_TAG}"
+                    git push origin HEAD
+                fi
                     '''
                 }
             }
