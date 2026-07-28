@@ -1,21 +1,28 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'JDK21'
+        nodejs 'Node22'
+    }
+
     environment {
-        AWS_REGION = "us-east-2"
+        AWS_REGION     = 'us-east-1'
+        AWS_ACCOUNT_ID = '047385030300'
 
-        ECR_REGISTRY = "<YOUR_ACCOUNT_ID>.dkr.ecr.us-east-2.amazonaws.com"
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-        FRONTEND_IMAGE = "${ECR_REGISTRY}/netflix-frontend"
+        BACKEND_IMAGE  = 'netflix-backend'
+        FRONTEND_IMAGE = 'netflix-frontend'
 
-        BACKEND_IMAGE = "${ECR_REGISTRY}/netflix-backend"
+        IMAGE_TAG = "${BUILD_NUMBER}"
 
-        GITOPS_REPO = "https://github.com/<YOUR_GITHUB_USERNAME>/netflix-devops-gitops.git"
+        GITOPS_REPO = 'https://github.com/ziazeshan141/netflix-devops-gitops.git'
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Source') {
             steps {
                 checkout scm
             }
@@ -37,27 +44,50 @@ pipeline {
             }
         }
 
-        stage('SonarQube Scan') {
+        stage('SonarQube Analysis') {
             steps {
-                echo 'SonarQube scan will be configured in the next phase'
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=netflix-devops \
+                      -Dsonar.projectName="Netflix DevOps" \
+                      -Dsonar.sources=backend,frontend
+                    '''
+                }
             }
         }
 
-        stage('Trivy Scan') {
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Trivy Filesystem Scan') {
             steps {
                 sh 'trivy fs .'
             }
         }
 
-        stage('Build Backend Docker Image') {
+        stage('Build Backend Image') {
             steps {
-                sh 'docker build -t ${BACKEND_IMAGE}:latest backend'
+                sh """
+                docker build \
+                -t ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG} \
+                ./backend
+                """
             }
         }
 
-        stage('Build Frontend Docker Image') {
+        stage('Build Frontend Image') {
             steps {
-                sh 'docker build -t ${FRONTEND_IMAGE}:latest frontend'
+                sh """
+                docker build \
+                -t ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                ./frontend
+                """
             }
         }
 
@@ -65,34 +95,73 @@ pipeline {
             steps {
                 sh '''
                 aws ecr get-login-password --region ${AWS_REGION} | \
-                docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                docker login \
+                --username AWS \
+                --password-stdin ${ECR_REGISTRY}
                 '''
             }
         }
 
-        stage('Push Docker Images') {
+        stage('Push Backend Image') {
             steps {
-                sh '''
-                docker push ${BACKEND_IMAGE}:latest
-                docker push ${FRONTEND_IMAGE}:latest
-                '''
+                sh """
+                docker push ${ECR_REGISTRY}/${BACKEND_IMAGE}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Push Frontend Image') {
+            steps {
+                sh """
+                docker push ${ECR_REGISTRY}/${FRONTEND_IMAGE}:${IMAGE_TAG}
+                """
             }
         }
 
         stage('Update GitOps Repository') {
             steps {
-                echo 'Will update Helm values.yaml in netflix-devops-gitops'
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+
+                    sh '''
+                    rm -rf gitops
+
+                    git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/ziazeshan141/netflix-devops-gitops.git gitops
+
+                    cd gitops
+
+                    sed -i "s/tag:.*/tag: ${IMAGE_TAG}/" helm/netflix/values.yaml
+
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins"
+
+                    git add .
+
+                    git commit -m "Update image tag ${IMAGE_TAG}" || true
+
+                    git push
+                    '''
+                }
             }
         }
+
     }
 
     post {
+
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully.'
         }
 
         failure {
             echo 'Pipeline failed.'
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
