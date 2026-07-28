@@ -44,19 +44,23 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    sonar-scanner \
-                      -Dsonar.projectKey=netflix-devops \
-                      -Dsonar.projectName="Netflix DevOps" \
-                      -Dsonar.sources=backend,frontend
-                    '''
-                }
-            }
-        }
-
+       stage('SonarQube Analysis') {
+           steps {
+               script {
+                   // Ensure that the SonarQube plugin is installed and configured in Jenkins
+                   def scannerHome = tool 'SonarQubeScanner'
+                   withSonarQubeEnv('SonarQube') {
+                       sh """
+                       ${scannerHome}/bin/sonar-scanner \
+                       -Dsonar.projectKey=netflix-devops \
+                       -Dsonar.projectName='Netflix DevOps' \
+                       -Dsonar.sources=backend,frontend"
+                       """
+                   }
+               }
+           }   
+       }    
+    
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
