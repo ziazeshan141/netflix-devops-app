@@ -218,11 +218,19 @@ pipeline {
         }
 
         success {
-            echo 'Pipeline completed successfully.'
+            emailext(
+                subject:"SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Deployment completed successfully.",
+                to: "ziazeshan141@gmail.com"
+            ) 
         }
 
         failure {
-            echo 'Pipeline failed.'
-        }
+            emailext(
+                subject:"FAILED: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: "Pipeline failed.",
+                to: "ziazeshan141@gmail.com".'
+            )
+         }
     }
 }   
